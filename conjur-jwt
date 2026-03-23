@@ -1,0 +1,32 @@
+# This is a basic workflow to help you get started with Actions
+name: CI
+# Controls when the workflow will run
+on:
+  # Triggers the workflow on push or pull request events but only for the "main" branch
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+jobs:
+  token-job:
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+    runs-on: ubuntu-latest
+    name: Obtain and Use JWT
+steps:
+      - name: Get JWT
+        id: auth-token
+        run: |
+          echo "TOKEN=$(curl -sSL -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "$ACTIONS_ID_TOKEN_REQUEST_URL" | jq .value)" >> $GITHUB_ENV
+          echo "JWT Token acquired."
+          echo $TOKEN | jq .value | base64
+- name: Authenticate
+        id: api-auth
+        run: |
+          echo "Received token: $TOKEN"
+          export SHORT_LIVE_TOKEN=\"$(curl -k --request POST https://lvm-uat.secretsmgr.cyberark.cloud/api/authn-jwt/lvmtest/conjur/host%2Fdata%2FPRPDevopsJWT/authenticate --header "Content-Type: application/x-www-form-urlencoded" --header "Accept-Encoding: base64" --data-urlencode jwt="${{ env.TOKEN }}")\"
+          echo "Authentication request sent."
+          curl -vvvk --request GET https://lvm-uat.secretsmgr.cyberark.cloud/api/secrets/conjur/variable/data%2Fvault%2FLVM_PRD_DEVOPS_ADMIN%2FDatabase-EcoceaPostgresSQL-10.55.169.3-root%2Fpassword -H "Authorization:Token token=$SHORT_LIVE_TOKEN"
